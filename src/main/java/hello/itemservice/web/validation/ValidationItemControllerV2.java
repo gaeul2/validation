@@ -24,6 +24,7 @@ import java.util.Map;
 public class ValidationItemControllerV2 {
 
     private final ItemRepository itemRepository;
+    private final ItemValidator itemValidator;
 
     @GetMapping
     public String items(Model model) {
@@ -172,7 +173,7 @@ public class ValidationItemControllerV2 {
     }
 
 
-    @PostMapping("/add")
+//    @PostMapping("/add")
     public String addItemV4(@ModelAttribute Item item,
                             BindingResult bindingResult, //순서가 중요 얘는 @ModelAttribute 다음에 와야함! 그래야 item의 에러를 담을 수 있음
                             RedirectAttributes redirectAttributes,
@@ -180,14 +181,6 @@ public class ValidationItemControllerV2 {
 
         log.info("objectName={}", bindingResult.getObjectName());
         log.info("target={}", bindingResult.getTarget());
-
-
-        //검증에 실패하면 다시 입력폼으로
-        if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
-            log.info("errors={}", bindingResult);
-            //bindingResult는 자동으로 view에 넘어감. 그래서 model.addAttribute 안해줘도됨
-            return "validation/v2/addForm";
-        }
 
         //검증 로직
         if(!StringUtils.hasText(item.getItemName())){ //item.ItemName에 글자가 없으면
@@ -210,6 +203,37 @@ public class ValidationItemControllerV2 {
             }
         }
 
+        //검증에 실패하면 다시 입력폼으로
+        if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
+            log.info("errors={}", bindingResult);
+            //bindingResult는 자동으로 view에 넘어감. 그래서 model.addAttribute 안해줘도됨
+            return "validation/v2/addForm";
+        }
+
+        //성공 로직
+        Item savedItem = itemRepository.save(item);
+        redirectAttributes.addAttribute("itemId", savedItem.getId());
+        redirectAttributes.addAttribute("status", true);
+        return "redirect:/validation/v2/items/{itemId}";
+    }
+
+    @PostMapping("/add")
+    public String addItemV5(@ModelAttribute Item item,
+                            BindingResult bindingResult, //순서가 중요 얘는 @ModelAttribute 다음에 와야함! 그래야 item의 에러를 담을 수 있음
+                            RedirectAttributes redirectAttributes,
+                            Model model) {
+
+        //이건 생략
+//        itemValidator.supports(item.getClass());
+
+        itemValidator.validate(item, bindingResult);
+
+        //검증에 실패하면 다시 입력폼으로
+        if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
+            log.info("errors={}", bindingResult);
+            //bindingResult는 자동으로 view에 넘어감. 그래서 model.addAttribute 안해줘도됨
+            return "validation/v2/addForm";
+        }
 
         //성공 로직
         Item savedItem = itemRepository.save(item);
