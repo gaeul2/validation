@@ -181,6 +181,14 @@ public class ValidationItemControllerV2 {
         log.info("objectName={}", bindingResult.getObjectName());
         log.info("target={}", bindingResult.getTarget());
 
+
+        //검증에 실패하면 다시 입력폼으로
+        if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
+            log.info("errors={}", bindingResult);
+            //bindingResult는 자동으로 view에 넘어감. 그래서 model.addAttribute 안해줘도됨
+            return "validation/v2/addForm";
+        }
+
         //검증 로직
         if(!StringUtils.hasText(item.getItemName())){ //item.ItemName에 글자가 없으면
             //오브젝트명(@ModelAttribute에 담기는 이름을 넣어주면 됨, 필드명, 디폴트 메세지.
@@ -202,12 +210,6 @@ public class ValidationItemControllerV2 {
             }
         }
 
-        //검증에 실패하면 다시 입력폼으로
-        if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
-            log.info("errors={}", bindingResult);
-            //bindingResult는 자동으로 view에 넘어감. 그래서 model.addAttribute 안해줘도됨
-            return "validation/v2/addForm";
-        }
 
         //성공 로직
         Item savedItem = itemRepository.save(item);
