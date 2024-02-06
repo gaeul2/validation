@@ -10,6 +10,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -42,33 +44,16 @@ public class ValidationItemControllerV3 {
         model.addAttribute("item", new Item());
         return "validation/v3/addForm";
     }
-
+    //@Validated가 있으면 알아서 beanValidate가 적용됨
     @PostMapping("/add")
-    public String addItemV1(@ModelAttribute Item item,
-                          BindingResult bindingResult, //순서가 중요 얘는 @ModelAttribute 다음에 와야함! 그래야 item의 에러를 담을 수 있음
-                          RedirectAttributes redirectAttributes,
-                          Model model) {
+    public String addItem(@Validated @ModelAttribute Item item,
+                            BindingResult bindingResult, //순서가 중요 얘는 @ModelAttribute 다음에 와야함! 그래야 item의 에러를 담을 수 있음
+                            RedirectAttributes redirectAttributes,
+                            Model model) {
 
-        //검증 로직
-        if(!StringUtils.hasText(item.getItemName())){ //item.ItemName에 글자가 없으면
-            //오브젝트명(@ModelAttribute에 담기는 이름을 넣어주면 됨, 필드명, 디폴트 메세지.
-            bindingResult.addError(new FieldError("item","itemName", "상품 이름은 필수입니다."));
-        }
-        if(item.getPrice() == null || item.getPrice() < 1000 || item.getPrice() > 1000000){ //가격이 없거나 천원보다 작거나 백만원보다 크면
-            bindingResult.addError(new FieldError("item", "price", "가격은 1,000 ~ 1,000,000까지 허용합니다."));
-        }
-        if(item.getQuantity() == null || item.getQuantity() >= 9999){
-            bindingResult.addError(new FieldError("item", "quantity", "수량은 최대 9,999 까지 허용합니다."));
-        }
+        //@Validated 넣으면 Item에 대해서 알아서 검증기가 수행됨
+        //이 어노테이션 자체가 검증기를 실행하라 라는 어노테이션임. -> 얘가 작동하려면 컨트롤러위에 @InitBinder가 있다는 전제하임.
 
-        //특정 필드가 아닌 복합 룰 검증
-        if(item.getPrice() != null && item.getQuantity() != null){
-            int resultPrice = item.getPrice() * item.getQuantity();
-            if (resultPrice < 10000){
-                //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
-                bindingResult.addError(new ObjectError("item", "가격 * 수량의 합은 10,000원 이상이어야 합니다. 현재 값 = " + resultPrice));
-            }
-        }
 
         //검증에 실패하면 다시 입력폼으로
         if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
