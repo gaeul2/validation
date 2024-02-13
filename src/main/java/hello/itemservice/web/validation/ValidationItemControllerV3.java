@@ -53,7 +53,14 @@ public class ValidationItemControllerV3 {
 
         //@Validated 넣으면 Item에 대해서 알아서 검증기가 수행됨
         //이 어노테이션 자체가 검증기를 실행하라 라는 어노테이션임. -> 얘가 작동하려면 컨트롤러위에 @InitBinder가 있다는 전제하임.
-
+        //특정 필드가 아닌 복합 룰 검증
+        if(item.getPrice() != null && item.getQuantity() != null){
+            int resultPrice = item.getPrice() * item.getQuantity();
+            if (resultPrice < 10000){
+                //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
+                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
+            }
+        }
 
         //검증에 실패하면 다시 입력폼으로
         if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
