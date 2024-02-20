@@ -1,0 +1,160 @@
+package hello.itemservice.web.validation;
+
+import hello.itemservice.domain.item.Item;
+import hello.itemservice.domain.item.ItemRepository;
+import hello.itemservice.domain.item.SaveCheck;
+import hello.itemservice.domain.item.UpdateCheck;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.List;
+
+@Slf4j
+@Controller
+@RequestMapping("/validation/v4/items")
+@RequiredArgsConstructor
+public class ValidationItemControllerV4 {
+
+    private final ItemRepository itemRepository;
+
+    @GetMapping
+    public String items(Model model) {
+        List<Item> items = itemRepository.findAll();
+        model.addAttribute("items", items);
+        return "validation/v3/items";
+    }
+
+    @GetMapping("/{itemId}")
+    public String item(@PathVariable long itemId, Model model) {
+        Item item = itemRepository.findById(itemId);
+        model.addAttribute("item", item);
+        return "validation/v3/item";
+    }
+
+    @GetMapping("/add")
+    public String addForm(Model model) {
+        model.addAttribute("item", new Item());
+        return "validation/v3/addForm";
+    }
+    //@Validated가 있으면 알아서 beanValidate가 적용됨
+//    @PostMapping("/add")
+    public String addItem1(@Validated @ModelAttribute Item item,
+                            BindingResult bindingResult, //순서가 중요 얘는 @ModelAttribute 다음에 와야함! 그래야 item의 에러를 담을 수 있음
+                            RedirectAttributes redirectAttributes,
+                            Model model) {
+
+        //@Validated 넣으면 Item에 대해서 알아서 검증기가 수행됨
+        //이 어노테이션 자체가 검증기를 실행하라 라는 어노테이션임. -> 얘가 작동하려면 컨트롤러위에 @InitBinder가 있다는 전제하임.
+        //특정 필드가 아닌 복합 룰 검증
+        if(item.getPrice() != null && item.getQuantity() != null){
+            int resultPrice = item.getPrice() * item.getQuantity();
+            if (resultPrice < 10000){
+                //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
+                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
+            }
+        }
+
+        //검증에 실패하면 다시 입력폼으로
+        if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
+            log.info("errors={}", bindingResult);
+            //bindingResult는 자동으로 view에 넘어감. 그래서 model.addAttribute 안해줘도됨
+            return "validation/v3/addForm";
+        }
+
+        //성공 로직
+        Item savedItem = itemRepository.save(item);
+        redirectAttributes.addAttribute("itemId", savedItem.getId());
+        redirectAttributes.addAttribute("status", true);
+        return "redirect:/validation/v3/items/{itemId}";
+    }
+
+    @PostMapping("/add")
+    public String addItem2(@Validated(SaveCheck.class) @ModelAttribute Item item,
+                          BindingResult bindingResult, //순서가 중요 얘는 @ModelAttribute 다음에 와야함! 그래야 item의 에러를 담을 수 있음
+                          RedirectAttributes redirectAttributes) {
+
+        //@Validated 넣으면 Item에 대해서 알아서 검증기가 수행됨
+        //이 어노테이션 자체가 검증기를 실행하라 라는 어노테이션임. -> 얘가 작동하려면 컨트롤러위에 @InitBinder가 있다는 전제하임.
+        //특정 필드가 아닌 복합 룰 검증
+        if(item.getPrice() != null && item.getQuantity() != null){
+            int resultPrice = item.getPrice() * item.getQuantity();
+            if (resultPrice < 10000){
+                //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
+                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
+            }
+        }
+
+        //검증에 실패하면 다시 입력폼으로
+        if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
+            log.info("errors={}", bindingResult);
+            //bindingResult는 자동으로 view에 넘어감. 그래서 model.addAttribute 안해줘도됨
+            return "validation/v3/addForm";
+        }
+
+        //성공 로직
+        Item savedItem = itemRepository.save(item);
+        redirectAttributes.addAttribute("itemId", savedItem.getId());
+        redirectAttributes.addAttribute("status", true);
+        return "redirect:/validation/v3/items/{itemId}";
+    }
+
+    @GetMapping("/{itemId}/edit")
+    public String editForm(@PathVariable Long itemId, Model model) {
+        Item item = itemRepository.findById(itemId);
+        model.addAttribute("item", item);
+        return "validation/v3/editForm";
+    }
+
+//    @PostMapping("/{itemId}/edit")
+    public String edit1(@PathVariable Long itemId, @Validated @ModelAttribute Item item,
+                       BindingResult bindingResult) {
+
+        //특정 필드가 아닌 복합 룰 검증
+        if(item.getPrice() != null && item.getQuantity() != null){
+            int resultPrice = item.getPrice() * item.getQuantity();
+            if (resultPrice < 10000){
+                //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
+                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
+            }
+        }
+
+        if (bindingResult.hasErrors()){
+            log.info("errors={}", bindingResult);
+            return "validation/v3/editForm";
+        }
+
+        itemRepository.update(itemId, item);
+        return "redirect:/validation/v3/items/{itemId}";
+    }
+
+    @PostMapping("/{itemId}/edit")
+    public String edit2(@PathVariable Long itemId,
+                        @Validated(UpdateCheck.class) @ModelAttribute Item item,
+                        BindingResult bindingResult) {
+
+        //특정 필드가 아닌 복합 룰 검증
+        if(item.getPrice() != null && item.getQuantity() != null){
+            int resultPrice = item.getPrice() * item.getQuantity();
+            if (resultPrice < 10000){
+                //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
+                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
+            }
+        }
+
+        if (bindingResult.hasErrors()){
+            log.info("errors={}", bindingResult);
+            return "validation/v3/editForm";
+        }
+
+        itemRepository.update(itemId, item);
+        return "redirect:/validation/v3/items/{itemId}";
+    }
+
+}
+
