@@ -4,6 +4,8 @@ import hello.itemservice.domain.item.Item;
 import hello.itemservice.domain.item.ItemRepository;
 import hello.itemservice.domain.item.SaveCheck;
 import hello.itemservice.domain.item.UpdateCheck;
+import hello.itemservice.web.validation.form.ItemSaveForm;
+import hello.itemservice.web.validation.form.ItemUpdateForm;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
@@ -42,9 +44,8 @@ public class ValidationItemControllerV4 {
         model.addAttribute("item", new Item());
         return "validation/v3/addForm";
     }
-    //@Validated가 있으면 알아서 beanValidate가 적용됨
-//    @PostMapping("/add")
-    public String addItem1(@Validated @ModelAttribute Item item,
+    @PostMapping("/add")
+    public String addItem(@Validated @ModelAttribute("item") ItemSaveForm form,
                             BindingResult bindingResult, //순서가 중요 얘는 @ModelAttribute 다음에 와야함! 그래야 item의 에러를 담을 수 있음
                             RedirectAttributes redirectAttributes,
                             Model model) {
@@ -52,8 +53,8 @@ public class ValidationItemControllerV4 {
         //@Validated 넣으면 Item에 대해서 알아서 검증기가 수행됨
         //이 어노테이션 자체가 검증기를 실행하라 라는 어노테이션임. -> 얘가 작동하려면 컨트롤러위에 @InitBinder가 있다는 전제하임.
         //특정 필드가 아닌 복합 룰 검증
-        if(item.getPrice() != null && item.getQuantity() != null){
-            int resultPrice = item.getPrice() * item.getQuantity();
+        if(form.getPrice() != null && form.getQuantity() != null){
+            int resultPrice = form.getPrice() * form.getQuantity();
             if (resultPrice < 10000){
                 //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
                 bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
@@ -67,35 +68,10 @@ public class ValidationItemControllerV4 {
             return "validation/v3/addForm";
         }
 
-        //성공 로직
-        Item savedItem = itemRepository.save(item);
-        redirectAttributes.addAttribute("itemId", savedItem.getId());
-        redirectAttributes.addAttribute("status", true);
-        return "redirect:/validation/v3/items/{itemId}";
-    }
-
-    @PostMapping("/add")
-    public String addItem2(@Validated(SaveCheck.class) @ModelAttribute Item item,
-                          BindingResult bindingResult, //순서가 중요 얘는 @ModelAttribute 다음에 와야함! 그래야 item의 에러를 담을 수 있음
-                          RedirectAttributes redirectAttributes) {
-
-        //@Validated 넣으면 Item에 대해서 알아서 검증기가 수행됨
-        //이 어노테이션 자체가 검증기를 실행하라 라는 어노테이션임. -> 얘가 작동하려면 컨트롤러위에 @InitBinder가 있다는 전제하임.
-        //특정 필드가 아닌 복합 룰 검증
-        if(item.getPrice() != null && item.getQuantity() != null){
-            int resultPrice = item.getPrice() * item.getQuantity();
-            if (resultPrice < 10000){
-                //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
-                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
-            }
-        }
-
-        //검증에 실패하면 다시 입력폼으로
-        if (bindingResult.hasErrors()){ //errors맵이 빈값이 아니면 오류가 있다는 뜻이지.
-            log.info("errors={}", bindingResult);
-            //bindingResult는 자동으로 view에 넘어감. 그래서 model.addAttribute 안해줘도됨
-            return "validation/v3/addForm";
-        }
+        Item item = new Item();
+        item.setItemName(form.getItemName());
+        item.setPrice(form.getPrice());
+        item.setQuantity(form.getQuantity());
 
         //성공 로직
         Item savedItem = itemRepository.save(item);
@@ -103,6 +79,7 @@ public class ValidationItemControllerV4 {
         redirectAttributes.addAttribute("status", true);
         return "redirect:/validation/v3/items/{itemId}";
     }
+
 
     @GetMapping("/{itemId}/edit")
     public String editForm(@PathVariable Long itemId, Model model) {
@@ -111,13 +88,14 @@ public class ValidationItemControllerV4 {
         return "validation/v3/editForm";
     }
 
-//    @PostMapping("/{itemId}/edit")
-    public String edit1(@PathVariable Long itemId, @Validated @ModelAttribute Item item,
+    @PostMapping("/{itemId}/edit")
+    public String edit(@PathVariable Long itemId,
+                       @Validated @ModelAttribute("item") ItemUpdateForm form,
                        BindingResult bindingResult) {
 
         //특정 필드가 아닌 복합 룰 검증
-        if(item.getPrice() != null && item.getQuantity() != null){
-            int resultPrice = item.getPrice() * item.getQuantity();
+        if(form.getPrice() != null && form.getQuantity() != null){
+            int resultPrice = form.getPrice() * form.getQuantity();
             if (resultPrice < 10000){
                 //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
                 bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
@@ -129,32 +107,13 @@ public class ValidationItemControllerV4 {
             return "validation/v3/editForm";
         }
 
-        itemRepository.update(itemId, item);
+        Item itemParam = new Item();
+        itemParam.setItemName(form.getItemName());
+        itemParam.setPrice(form.getPrice());
+        itemParam.setQuantity(form.getQuantity());
+
+        itemRepository.update(itemId, itemParam);
         return "redirect:/validation/v3/items/{itemId}";
     }
-
-    @PostMapping("/{itemId}/edit")
-    public String edit2(@PathVariable Long itemId,
-                        @Validated(UpdateCheck.class) @ModelAttribute Item item,
-                        BindingResult bindingResult) {
-
-        //특정 필드가 아닌 복합 룰 검증
-        if(item.getPrice() != null && item.getQuantity() != null){
-            int resultPrice = item.getPrice() * item.getQuantity();
-            if (resultPrice < 10000){
-                //field에러가 아닌 글로벌 에러를 처리하기위해 ObjectError 객체사용
-                bindingResult.reject("totalPriceMin", new Object[]{10000, resultPrice}, null);
-            }
-        }
-
-        if (bindingResult.hasErrors()){
-            log.info("errors={}", bindingResult);
-            return "validation/v3/editForm";
-        }
-
-        itemRepository.update(itemId, item);
-        return "redirect:/validation/v3/items/{itemId}";
-    }
-
 }
 
